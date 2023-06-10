@@ -26,11 +26,16 @@ const client = new MongoClient(uri, {
 
 async function run() {
   try {
-    const classCollection = client.db('Playfit-Sports').collection('classes')
+    const classCollection = client.db('Playfit-Sports').collection('classes');
+    const instructorCollection = client.db('Playfit-Sports').collection('instructors');
 
     app.get('/classes', async(req, res)=>{
         const result = await classCollection.find().toArray();
         res.send(result);
+    })
+    app.get('/instructors', async(req, res) =>{
+      const result = await instructorCollection.find().toArray();
+      res.send(result)
     })
 
     // Send a ping to confirm a successful connection
