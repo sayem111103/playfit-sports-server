@@ -71,7 +71,6 @@ async function run() {
 
     app.post("/jwt", (req, res) => {
       const user = req.body;
-      console.log(user);
       const token = jwt.sign(user, process.env.JWT_SECRET, { expiresIn: "1h" });
       res.send({ token });
     });
@@ -101,6 +100,22 @@ async function run() {
         return res.send({message: 'already exist'})
       }
       const result = await usersCollection.insertOne(user);
+      res.send(result)
+    })
+
+    app.get('/user',verifyJWT,verifyAdmin,async(req,res)=>{
+      const result = await usersCollection.find().toArray();
+      res.send(result)
+    })
+
+    app.get('/user/admin/:email',verifyJWT,async(req, res)=>{
+      const email = req.params.email;
+      const query = {email: email};
+      const user = await usersCollection.findOne(query);
+      if(req.decoded.email !== email){
+        res.send({admin:false})
+      }
+      const result = {admin: user.role === 'admin'}
       res.send(result)
     })
 
