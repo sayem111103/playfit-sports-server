@@ -86,6 +86,13 @@ async function run() {
       res.send(result);
     });
 
+    app.get("/myclasses/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await classCollection.findOne(query);
+      res.send(result);
+    });
+
     app.get(
       "/classes/:email",
       verifyJWT,
@@ -93,7 +100,6 @@ async function run() {
       async (req, res) => {
         const email = req.params.email;
         const query = { instructorEmail: email };
-        console.log(query);
         const result = await classCollection.find(query).toArray();
         res.send(result);
       }
@@ -115,7 +121,7 @@ async function run() {
       res.send(result);
     });
 
-    app.delete("/classes/:id", async (req, res) => {
+    app.delete("/classes/:id", verifyJWT, verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await classCollection.deleteOne(query);
@@ -133,10 +139,29 @@ async function run() {
           status: data.name,
         },
       };
-      console.log(id, updateDoc);
       const result = await classCollection.updateOne(query, updateDoc, option);
       res.send(result);
     });
+
+    app.put(
+      "/myclasses/:id",
+      verifyJWT,
+      verifyInstructor,
+      async (req, res) => {
+        const id = req.params.id;
+        const data = req.body;
+        const query = { _id: new ObjectId(id) };
+        const option = {upsert:true}
+        const updateDoc = {
+          $set: {
+            data
+          }
+        };
+        console.log(query, data);
+        const result = await classCollection.updateOne(query, updateDoc,option);
+        res.send(result);
+      }
+    );
 
     //instructors crud operation
     app.get("/instructors", async (req, res) => {
