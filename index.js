@@ -143,7 +143,7 @@ async function run() {
       res.send(result);
     });
 
-    app.put(
+    app.patch(
       "/myclasses/:id",
       verifyJWT,
       verifyInstructor,
@@ -154,10 +154,16 @@ async function run() {
         const option = {upsert:true}
         const updateDoc = {
           $set: {
-            data
+            name: data?.name,
+            instructor: data?.instructor,
+            availableSeats: parseFloat(data?.availableSeats),
+            totalSeat: parseFloat(data?.totalSeat),
+            instructorEmail: data?.instructorEmail,
+            image: data?.image,
+            price: parseFloat(data?.price),
           }
         };
-        console.log(query, data);
+        console.log(updateDoc);
         const result = await classCollection.updateOne(query, updateDoc,option);
         res.send(result);
       }
