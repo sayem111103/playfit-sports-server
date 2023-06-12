@@ -71,7 +71,7 @@ async function run() {
 
     app.post("/jwt", (req, res) => {
       const user = req.body;
-      const token = jwt.sign(user, process.env.JWT_SECRET, { expiresIn: "1h" });
+      const token = jwt.sign(user, process.env.JWT_SECRET, { expiresIn: "3h" });
       res.send({ token });
     });
 
@@ -80,6 +80,36 @@ async function run() {
       res.send(result);
     });
 
+    // classes crud operation 
+    app.post('/classes', (req, res)=>{
+      const classes = req.body;
+
+    })
+
+    app.delete('/classes/:id', async(req, res)=>{
+      const id = req.params.id;
+      const query = {_id: new ObjectId(id)};
+      const result = await classCollection.deleteOne(query);
+      res.send(result);
+    })
+
+    app.patch('/classes/:id',verifyJWT, verifyAdmin, async(req, res)=>{
+      const id = req.params.id;
+      const data = req.body;
+      const query = {_id: new ObjectId(id)}
+      const option = {upsert: true}
+      const updateDoc = {
+        $set:{
+          feedback: data.feedback,
+          status: data.name,
+        }
+      }
+      console.log(id, updateDoc);
+      const result = await classCollection.updateOne(query, updateDoc, option)
+      res.send(result)
+    })
+
+    //instructors crud operation 
     app.get("/instructors", async (req, res) => {
       const result = await instructorCollection.find().toArray();
       res.send(result);
@@ -92,6 +122,8 @@ async function run() {
       res.send(result);
     });
 
+
+    //user crud operation 
     app.post('/user', async(req, res)=>{
       const user = req.body;
       const query = {email: user.email}
@@ -118,6 +150,30 @@ async function run() {
       const result = {admin: user.role === 'admin'}
       res.send(result)
     })
+
+    app.get('/user/instructor/:email',verifyJWT,async(req, res)=>{
+      const email = req.params.email;
+      const query = {email: email};
+      const user = await usersCollection.findOne(query);
+      if(req.decoded.email !== email){
+        res.send({admin:false})
+      }
+      const result = {instructor: user.role === 'instructor'}
+      res.send(result)
+    })
+
+    app.patch('/user/:id',verifyJWT, verifyAdmin, async(req, res)=>{
+      const id = req.params.id;
+      const role = req.body;
+      const query = {_id: new ObjectId(id)}
+      const updateDoc = {
+        $set:{
+          role: role?.name
+        }
+      }
+      const user = await usersCollection.updateOne(query,updateDoc);
+      res.send(user)
+  })
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
