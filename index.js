@@ -49,6 +49,7 @@ async function run() {
       .db("Playfit-Sports")
       .collection("instructors");
     const usersCollection = client.db("Playfit-Sports").collection("users");
+    const cartCollection = client.db('Playfit-Sports').collection('classCart')
 
     const verifyAdmin = async (req, res, next) => {
       const email = req.decoded.email;
@@ -151,7 +152,7 @@ async function run() {
         const id = req.params.id;
         const data = req.body;
         const query = { _id: new ObjectId(id) };
-        const option = {upsert:true}
+        const option = { upsert: true };
         const updateDoc = {
           $set: {
             name: data?.name,
@@ -161,10 +162,14 @@ async function run() {
             instructorEmail: data?.instructorEmail,
             image: data?.image,
             price: parseFloat(data?.price),
-          }
+          },
         };
         console.log(updateDoc);
-        const result = await classCollection.updateOne(query, updateDoc,option);
+        const result = await classCollection.updateOne(
+          query,
+          updateDoc,
+          option
+        );
         res.send(result);
       }
     );
@@ -194,7 +199,7 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/user", verifyJWT, verifyAdmin, async (req, res) => {
+    app.get("/user",verifyJWT,verifyAdmin, async (req, res) => {
       const result = await usersCollection.find().toArray();
       res.send(result);
     });
@@ -233,6 +238,35 @@ async function run() {
       const user = await usersCollection.updateOne(query, updateDoc);
       res.send(user);
     });
+
+    // class cart crud operation 
+    app.get('/classcart', async(req, res)=>{
+      const cart = await cartCollection.find().toArray()
+      res.send(cart)
+    })
+
+    app.get('/classcart/:email',verifyJWT,async(req, res)=>{
+      const email = req.params.email;
+      const query = {email:email}
+      if (req.decoded.email !== email) {
+        res.status(401).send({ error: true, message:'unauthorize access' });
+      }
+      const classCart = await cartCollection.find(query).toArray();
+      res.send(classCart)
+    })
+
+    app.post('/classcart', async(req, res)=>{
+      const cart = req.body;
+      const query = {
+        $and:[{id: cart?.id}, {email:cart?.email}]
+      }
+      const exist = await cartCollection.findOne(query);
+      if(exist){
+        return res.send({message:'already exist'})
+      }
+      const result = await cartCollection.insertOne(cart)
+      res.send(result)
+    })
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
