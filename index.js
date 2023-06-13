@@ -241,7 +241,7 @@ async function run() {
     });
 
     // class cart crud operation
-    app.get("/classcart", async (req, res) => {
+    app.get("/classcart",verifyJWT, async (req, res) => {
       const cart = await cartCollection.find().toArray();
       res.send(cart);
     });
@@ -264,8 +264,13 @@ async function run() {
         $and: [{ id: cart?.id }, { email: cart?.email }],
       };
       const query2 = { name: cart?.name };
+      const query3 = {email: cart?.email}
       const exist = await cartCollection.findOne(query);
       const exist2 = await paymentCollection.findOne(query2);
+      const exist3 = await usersCollection.findOne(query3);
+      if(exist3.role === 'admin'|| exist3.role === 'instructor'){
+        return res.send({message: 'Only student can enroll'})
+      }
       if (exist || exist2) {
         return res.send({ message: "already exist" });
       }
