@@ -303,12 +303,14 @@ async function run() {
       const query = { _id: new ObjectId(payment.classId) };
       const clAss = await classCollection.findOne(query);
       const filter = { _id: new ObjectId(clAss?._id) };
-      const updataDoc = {
-        $set: {
-          availableSeats: parseInt(clAss.availableSeats - 1),
-        },
-      };
-      const update = await classCollection.updateOne(filter, updataDoc);
+      if(clAss.availableSeats > 0){
+        const updataDoc = {
+          $set: {
+            availableSeats: parseInt(clAss.availableSeats - 1),
+          },
+        };
+        const update = await classCollection.updateOne(filter, updataDoc);
+      }
       const result = await paymentCollection.insertOne(payment);
       res.send(result);
     });
@@ -321,7 +323,7 @@ async function run() {
           .status(401)
           .send({ error: true, message: "unauthorize access" });
       }
-      const result = await paymentCollection.find(query).toArray();
+      const result = await paymentCollection.find(query).sort({date:-1}).toArray();
       res.send(result);
     });
 
