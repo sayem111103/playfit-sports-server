@@ -2,6 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 require("dotenv").config();
+const stripe = require("stripe")(process.env.PAYMENT_SECRET);
 const jwt = require("jsonwebtoken");
 const app = express();
 const port = process.env.PORT || 5000;
@@ -49,7 +50,8 @@ async function run() {
       .db("Playfit-Sports")
       .collection("instructors");
     const usersCollection = client.db("Playfit-Sports").collection("users");
-    const cartCollection = client.db('Playfit-Sports').collection('classCart')
+    const cartCollection = client.db("Playfit-Sports").collection("classCart");
+    const paymentCollection = client.db("Playfit-Sports").collection("payment");
 
     const verifyAdmin = async (req, res, next) => {
       const email = req.decoded.email;
@@ -164,7 +166,6 @@ async function run() {
             price: parseFloat(data?.price),
           },
         };
-        console.log(updateDoc);
         const result = await classCollection.updateOne(
           query,
           updateDoc,
@@ -199,7 +200,7 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/user",verifyJWT,verifyAdmin, async (req, res) => {
+    app.get("/user", verifyJWT, verifyAdmin, async (req, res) => {
       const result = await usersCollection.find().toArray();
       res.send(result);
     });
@@ -239,34 +240,83 @@ async function run() {
       res.send(user);
     });
 
-    // class cart crud operation 
-    app.get('/classcart', async(req, res)=>{
-      const cart = await cartCollection.find().toArray()
-      res.send(cart)
-    })
+    // class cart crud operation
+    app.get("/classcart", async (req, res) => {
+      const cart = await cartCollection.find().toArray();
+      res.send(cart);
+    });
 
-    app.get('/classcart/:email',verifyJWT,async(req, res)=>{
+    app.get("/classcart/:email", verifyJWT, async (req, res) => {
       const email = req.params.email;
-      const query = {email:email}
+      const query = { email: email };
       if (req.decoded.email !== email) {
-        res.status(401).send({ error: true, message:'unauthorize access' });
+        return res
+          .status(401)
+          .send({ error: true, message: "unauthorize access" });
       }
       const classCart = await cartCollection.find(query).toArray();
-      res.send(classCart)
-    })
+      res.send(classCart);
+    });
 
-    app.post('/classcart', async(req, res)=>{
+    app.post("/classcart", async (req, res) => {
       const cart = req.body;
       const query = {
-        $and:[{id: cart?.id}, {email:cart?.email}]
-      }
+        $and: [{ id: cart?.id }, { email: cart?.email }],
+      };
       const exist = await cartCollection.findOne(query);
-      if(exist){
-        return res.send({message:'already exist'})
+      if (exist) {
+        return res.send({ message: "already exist" });
       }
-      const result = await cartCollection.insertOne(cart)
-      res.send(result)
-    })
+      const result = await cartCollection.insertOne(cart);
+      res.send(result);
+    });
+
+    app.delete("/classcart/:id", verifyJWT, async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const verify = await cartCollection.findOne(query);
+      if (req.decoded.email !== verify.email) {
+        return res
+          .status(401)
+          .send({ error: true, message: "unauthorize access" });
+      }
+      const result = await cartCollection.deleteOne(query);
+      res.send(result);
+    });
+
+    // payment back end
+    app.post("/create-payment-intent", verifyJWT, async (req, res) => {
+      const { price } = req.body;
+      const amount = parseInt(price * 100);
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: "usd",
+        payment_method_types: ["card"],
+      });
+      res.send({
+        clientSecret: paymentIntent.client_secret,
+      });
+    });
+
+    app.post("/payment", verifyJWT, async (req, res) => {
+      const payment = req.body;
+      const query = { _id: new ObjectId(payment.classId) };
+      const clAss = await classCollection.findOne(query);
+      const filter = { _id: new ObjectId(clAss?._id) };
+      const updataDoc = {
+        $set: {
+          availableSeats: parseInt(clAss.availableSeats - 1),
+        },
+      };
+      const update = await classCollection.updateOne(filter, updataDoc);
+      const result = await paymentCollection.insertOne(payment);
+      res.send(result);
+    });
+
+    app.get("/payment", verifyJWT, async (req, res) => {
+      const result = await paymentCollection.find().toArray();
+      res.send(result);
+    });
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
