@@ -263,8 +263,10 @@ async function run() {
       const query = {
         $and: [{ id: cart?.id }, { email: cart?.email }],
       };
+      const query2 = { name: cart?.name };
       const exist = await cartCollection.findOne(query);
-      if (exist) {
+      const exist2 = await paymentCollection.findOne(query2);
+      if (exist || exist2) {
         return res.send({ message: "already exist" });
       }
       const result = await cartCollection.insertOne(cart);
@@ -303,7 +305,7 @@ async function run() {
       const query = { _id: new ObjectId(payment.classId) };
       const clAss = await classCollection.findOne(query);
       const filter = { _id: new ObjectId(clAss?._id) };
-      if(clAss.availableSeats > 0){
+      if (clAss.availableSeats > 0) {
         const updataDoc = {
           $set: {
             availableSeats: parseInt(clAss.availableSeats - 1),
@@ -323,7 +325,10 @@ async function run() {
           .status(401)
           .send({ error: true, message: "unauthorize access" });
       }
-      const result = await paymentCollection.find(query).sort({date:-1}).toArray();
+      const result = await paymentCollection
+        .find(query)
+        .sort({ date: -1 })
+        .toArray();
       res.send(result);
     });
 
