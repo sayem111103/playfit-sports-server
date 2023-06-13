@@ -313,8 +313,15 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/payment", verifyJWT, async (req, res) => {
-      const result = await paymentCollection.find().toArray();
+    app.get("/payment/:email", verifyJWT, async (req, res) => {
+      const email = req.params.email;
+      const query = { email: email };
+      if (req.decoded.email !== email) {
+        return res
+          .status(401)
+          .send({ error: true, message: "unauthorize access" });
+      }
+      const result = await paymentCollection.find(query).toArray();
       res.send(result);
     });
 
