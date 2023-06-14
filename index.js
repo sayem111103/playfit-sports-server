@@ -263,7 +263,9 @@ async function run() {
       const query = {
         $and: [{ id: cart?.id }, { email: cart?.email }],
       };
-      const query2 = { name: cart?.name };
+      const query2 = {
+        $and:[{ name: cart?.name },{ email: cart?.email }]
+      };
       const query3 = {email: cart?.email}
       const exist = await cartCollection.findOne(query);
       const exist2 = await paymentCollection.findOne(query2);
